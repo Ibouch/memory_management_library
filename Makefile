@@ -16,15 +16,15 @@ endif
 
 NAME		=	libft_malloc_$(HOSTTYPE).so
 
-INC_PATH	=	-I includes/ -I libft/includes/
+INC_PATH	=	-I includes/ -I libft/includes/ -I ft_printf/includes/
 SRC_PATH	=	srcs
 
-SRC_NAME	=	malloc.c
+SRC_NAME	=	memory_functions.c
 SRC			=	$(addprefix $(SRC_PATH)/,$(SRC_NAME))
 OBJET		=	$(SRC:.c=.o)
 
-CC_FLAGS	=	clang -Wall -Wextra -Werror
-CREATE_LIB	=	$(CC_FLAGS) -shared -o $(NAME) $(OBJET) -L libft -lft
+CC_FLAGS	=	gcc -g -Wall -Wextra -Werror #-Wpadded
+CREATE_LIB	=	$(CC_FLAGS) -shared -o $(NAME) $(OBJET) -L libft -lft -L ft_printf -lftprintf
 CREATE_SLN	=	ln -s $(NAME) libft_malloc.so
 
 RED			=	\033[1;31m
@@ -36,9 +36,10 @@ all: $(NAME)
 
 $(NAME): $(OBJET)
 	@echo "➜	$(BLUE)Compilation of object files is complete.\n"
-	@echo "➜	$(YELLOW)Compilation of the libft in progress.."
+	@echo "➜	$(YELLOW)Compilation of additional libraries in progress.."
 	@make -C libft/ > /dev/null
-	@echo "➜	$(BLUE)Compilation of the libft is complete.\n"
+	@make -C ft_printf/ > /dev/null
+	@echo "➜	$(BLUE)Compilation of additional libraries is complete.\n"
 	@echo "➜	$(YELLOW)Creation of the library in progress.."
 	@$(CREATE_LIB)
 	@echo "➜	$(BLUE)Creation of the library is complete.\n"
@@ -53,6 +54,9 @@ $(NAME): $(OBJET)
 clean:
 	@echo "\n$(RED)➜	Deleting object files of the library"
 	@$(RM) $(OBJET)
+	@echo "\n$(RED)➜	Deleting additional libraries"
+	#@make fclean -C libft/ > /dev/null
+	#@make fclean -C ft_printf/ > /dev/null
 
 fclean: clean
 	@echo "➜	$(RED)Remove the library"
