@@ -8,15 +8,15 @@
 # define SMALL 1
 # define LARGE 2
 
-typedef struct		s_block
+typedef struct		s_header
 {
 	size_t			size;
-	t_bool			is_free;
-}					t_block;
+	t_bool			is_free[8];
+}					t_header;
 
 typedef struct		s_area
 {
-	size_t			size;
+	size_t			memory_available;
 	size_t			memory_allocated;
 	void			*ptr;
 	struct s_area	*next;
@@ -24,10 +24,12 @@ typedef struct		s_area
 
 typedef struct		s_memory
 {
-	struct s_area	*areas[N_AREA];
-	size_t			areas_size[N_AREA];
+	int				pagesize;
 	u_int8_t		id;
-	t_bool			areas_initialized[N_AREA - 1];
+	t_bool			areas_initialized[N_AREA];
+	size_t			areas_size[N_AREA];
+	struct s_area	*areas[N_AREA];
+//	pthread_mutex_t	mem_lock;
 }					t_memory;
 
 static t_memory		g_data;

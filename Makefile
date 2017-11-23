@@ -23,7 +23,7 @@ SRC_NAME	=	memory_functions.c
 SRC			=	$(addprefix $(SRC_PATH)/,$(SRC_NAME))
 OBJET		=	$(SRC:.c=.o)
 
-CC_FLAGS	=	gcc -g -Wall -Wextra -Werror #-Wpadded
+CC_FLAGS	=	gcc -g -Wall -Wextra -Werror
 CREATE_LIB	=	$(CC_FLAGS) -shared -o $(NAME) $(OBJET) -L libft -lft -L ft_printf -lftprintf
 CREATE_SLN	=	ln -s $(NAME) libft_malloc.so
 
