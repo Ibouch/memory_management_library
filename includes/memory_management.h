@@ -11,7 +11,7 @@
 typedef struct		s_header
 {
 	size_t			size;
-	t_bool			is_free[8];
+	t_bool			is_free;
 }					t_header;
 
 typedef struct		s_area
@@ -24,14 +24,27 @@ typedef struct		s_area
 
 typedef struct		s_memory
 {
+	int				id;
 	int				pagesize;
-	u_int8_t		id;
-	t_bool			areas_initialized[N_AREA];
 	size_t			areas_size[N_AREA];
 	struct s_area	*areas[N_AREA];
-//	pthread_mutex_t	mem_lock;
+	struct rlimit	rlm;
+	u_int64_t		total_allocated;
 }					t_memory;
 
 static t_memory		g_data;
+
+/*
+**	Memory library functions
+*/
+
+void				*realloc(void *ptr, size_t size);
+void				*malloc(size_t size);
+void				free(void *ptr);
+
+void				show_area_mem(t_area *addr, char *area, size_t *total);
+void				*get_available_block(t_area *area, size_t size);
+void				*add_new_area(t_area **area, size_t size);
+void				show_alloc_mem(void);
 
 #endif
