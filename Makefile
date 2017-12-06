@@ -23,7 +23,12 @@ SRC_NAME	=	memory_functions.c
 SRC			=	$(addprefix $(SRC_PATH)/,$(SRC_NAME))
 OBJET		=	$(SRC:.c=.o)
 
-CC_FLAGS	=	gcc -Wall -Wextra -std=c89 -pedantic -Wmissing-prototypes -Wstrict-prototypes -Wold-style-definition -Wold-style-cast #-Werror
+CC_FLAGS	=	gcc -Wall -Wextra -Werror -Wformat=2 -Wswitch-default -Wcast-align -Wpointer-arith \
+				-Wbad-function-cast -Wstrict-prototypes -Wstrict-overflow=5 -Winline -Wundef -Wnested-externs \
+				-Wcast-qual -Wshadow -Wwrite-strings -Wconversion -Wunreachable-code \
+				-fno-common -fstrict-aliasing \
+				-std=c11 -pedantic -O0 -ggdb3
+
 CREATE_LIB	=	$(CC_FLAGS) -shared -o $(NAME) $(OBJET) -L libft -lft -L ft_printf -lftprintf
 CREATE_SLN	=	ln -s $(NAME) libft_malloc.so
 
