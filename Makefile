@@ -23,7 +23,7 @@ SRC_NAME	=	memory_functions.c
 SRC			=	$(addprefix $(SRC_PATH)/,$(SRC_NAME))
 OBJET		=	$(SRC:.c=.o)
 
-CC_FLAGS	=	gcc -Wall -Wextra -Werror -Wformat=2 -Wswitch-default -Wcast-align -Wpointer-arith \
+CC_FLAGS	=	gcc -Wall -Wextra -Werror -g -Wformat=2 -Wswitch-default -Wcast-align -Wpointer-arith \
 				-Wbad-function-cast -Wstrict-prototypes -Wstrict-overflow=5 -Winline -Wundef -Wnested-externs \
 				-Wcast-qual -Wshadow -Wwrite-strings -Wconversion -Wunreachable-code \
 				-fno-common -fstrict-aliasing \
