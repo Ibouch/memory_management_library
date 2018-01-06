@@ -16,20 +16,16 @@ endif
 
 NAME		=	libft_malloc_$(HOSTTYPE).so
 
-INC_PATH	=	-I includes/ -I libft/includes/ -I ft_printf/includes/
+INC_PATH	=	-I includes/ -I libft/includes/
 SRC_PATH	=	srcs
 
 SRC_NAME	=	memory_functions.c
 SRC			=	$(addprefix $(SRC_PATH)/,$(SRC_NAME))
 OBJET		=	$(SRC:.c=.o)
 
-CC_FLAGS	=	gcc -Wall -Wextra -Werror -g -Wformat=2 -Wswitch-default -Wcast-align -Wpointer-arith \
-				-Wbad-function-cast -Wstrict-prototypes -Wstrict-overflow=5 -Winline -Wundef -Wnested-externs \
-				-Wcast-qual -Wshadow -Wwrite-strings -Wconversion -Wunreachable-code \
-				-fno-common -fstrict-aliasing \
-				-std=c11 -pedantic -O0 -ggdb3
+CC_FLAGS	=	clang -Wall -Wextra -Werror
 
-CREATE_LIB	=	$(CC_FLAGS) -shared -o $(NAME) $(OBJET) -L libft -lft -L ft_printf -lftprintf
+CREATE_LIB	=	$(CC_FLAGS) -shared -o $(NAME) $(OBJET) -L libft -lft
 CREATE_SLN	=	ln -s $(NAME) libft_malloc.so
 
 RED			=	\033[1;31m
@@ -43,12 +39,13 @@ $(NAME): $(OBJET)
 	@echo "➜	$(BLUE)Compilation of object files is complete.\n"
 	@echo "➜	$(YELLOW)Compilation of additional libraries in progress.."
 	@make -C libft/ > /dev/null
-	@make -C ft_printf/ > /dev/null
 	@echo "➜	$(BLUE)Compilation of additional libraries is complete.\n"
 	@echo "➜	$(YELLOW)Creation of the library in progress.."
+	
 	@$(CREATE_LIB)
 	@echo "➜	$(BLUE)Creation of the library is complete.\n"
 	@echo "➜	$(YELLOW)Creation of the symbolic link in progress.."
+
 	@$(CREATE_SLN)
 	@echo "➜	$(BLUE)Creation of the symbolic link is complete.\n"
 	@echo "\033[1;32m➜	Done"
@@ -61,7 +58,6 @@ clean:
 	@$(RM) $(OBJET)
 	@echo "\n$(RED)➜	Deleting additional libraries"
 	@make fclean -C libft/ > /dev/null
-	@make fclean -C ft_printf/ > /dev/null
 
 fclean: clean
 	@echo "➜	$(RED)Remove the library"

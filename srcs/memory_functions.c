@@ -1,4 +1,3 @@
-#include <ft_printf.h>
 #include <memory_management.h>
 #include <sys/mman.h>
 
@@ -7,6 +6,41 @@
 # define NEW_BLOCK (META_DATA + size)
 # define OVER_MDATA (i + META_DATA)
 # define OVER_BLOCK (i + BLOCK_SIZE)
+
+void	print_digit_addr(size_t p)
+{
+	const char	*s;
+
+	s = "0123456789abcdef";
+	if (p > 0)
+	{
+		print_digit_addr(p / 16);
+		ft_putchar(s[(p % 16)]);
+	}
+}
+
+void	print_addr(size_t p)
+{
+	ft_putstr("\033[1;96m0x");
+	print_digit_addr(p);
+}
+
+void	print_digit_size(size_t nb)
+{
+	if (nb >= 10)
+	{
+		print_digit_size(nb / 10);
+		ft_putchar(nb % 10 + '0');
+	}
+	else
+		ft_putchar((char)nb + '0');
+}
+
+void	print_size(size_t nb)
+{
+	ft_putstr(H_WHITE);
+	print_digit_size(nb);
+}
 
 void	*return_pointer(void *ptr)
 {
@@ -45,6 +79,43 @@ void	*add_new_area(t_area **area, size_t size)
 	return (get_available_block((*area), size));
 }
 
+static void	print_area_name(const char area[6], void *ptr)
+{
+	ft_putstr("\033[1;95m\n");
+	ft_putstr(area);
+	ft_putstr(" : ");
+	print_addr((size_t)ptr);
+	ft_putchar('\n');
+}
+
+static void	show_data(size_t memory_available, size_t memory_allocated)
+{
+	ft_putstr("\n\033[1;93m------------------------------------------\n");
+	ft_putstr("- Total : ");
+	print_size(memory_available);
+	ft_putendl(" octets");
+
+	ft_putstr("\033[1;93m- Allocated : ");
+	print_size(memory_allocated);
+	ft_putendl(" octets");
+
+	ft_putstr("\033[1;93m- Available : ");
+	print_size(memory_available - memory_allocated);
+	ft_putendl(" octets");
+	ft_putendl("\033[1;93m------------------------------------------\n");
+}
+
+static void	show_block_range(void *ptr, size_t i, size_t segment_size, bool is_free)
+{
+	print_addr(((size_t)ptr + OVER_MDATA));
+	ft_putstr(" - ");
+	print_addr(((size_t)ptr + OVER_BLOCK));
+	ft_putstr(" : ");
+	print_size(segment_size);
+	ft_putstr(" octets");
+	(is_free) ? ft_strcolor_fd(" [✓]", H_GREEN, 1, true) : ft_strcolor_fd(" [✘]", H_RED, 1, true);
+}
+
 static void	show_area_mem(t_area *addr, const char area[6], size_t *total)
 {
 	size_t	i;
@@ -52,16 +123,16 @@ static void	show_area_mem(t_area *addr, const char area[6], size_t *total)
 	bool	is_free;
 
 	if (addr && addr->ptr != NULL)
-		ft_printf("\n%s : %p\n", area, addr->ptr);
+		print_area_name(area, addr->ptr);
 	while (addr && addr->ptr != NULL)
 	{
-		ft_printf("\n---------------------- ZONE ----------------------\n- Total : %zu octets\n- Allocated : %zu octets\n- Available : %zu octets\n\n", addr->memory_available, addr->memory_allocated, addr->memory_available - addr->memory_allocated);
+		show_data(addr->memory_available, addr->memory_allocated);
 		i = 0;
 		while (i < addr->memory_allocated)
 		{
 			segment_size = ((struct s_header *)((size_t)addr->ptr + i))->size;
 			is_free = ((struct s_header *)((size_t)addr->ptr + i))->is_free;
-			ft_printf("%p - %p : %zu octets free : %u\n", ((size_t)addr->ptr + OVER_MDATA), ((size_t)addr->ptr + OVER_BLOCK), segment_size, is_free);
+			show_block_range(addr->ptr, i, segment_size, is_free);
 			i += BLOCK_SIZE;
 			*total += segment_size;
 		}
@@ -77,7 +148,9 @@ void	show_alloc_mem(void)
 	show_area_mem(g_data.areas[TINY], "TINY", &total);
 	show_area_mem(g_data.areas[SMALL], "SMALL", &total);
 	show_area_mem(g_data.areas[LARGE], "LARGE", &total);
-	ft_printf("Total : %zu octets\n", total);
+	ft_putstr("\033[1;93m \n▶  Total : ");
+	print_size(total);
+	ft_putendl(" octets");
 }
 
 static void	*find_available_free_block(t_area *a, size_t size)
@@ -147,26 +220,6 @@ void	*merge_data_blocks(void	**start, void *to_merge)
 	segment_size = ((struct s_header *)(to_merge))->size;
 	((struct s_header *)(*start))->size += BLOCK_SIZE;
 	return (*(start));
-}
-
-void	titi(t_area *b, u_int8_t id)
-{
-	t_area *addr = b;
-
-	size_t i = 0;
-	size_t	segment_size;
-	bool	is_free;
-
-	if (id == 2)
-		return ;
-	ft_printf("\nID : %d ---------------------- ZONE ----------------------\n- Total : %zu octets\n- Allocated : %zu octets\n- Available : %zu octets\n\n", (int)id, addr->memory_available, addr->memory_allocated, addr->memory_available - addr->memory_allocated);
-	while (i < addr->memory_allocated)
-	{
-		segment_size = ((struct s_header *)((size_t)addr->ptr + i))->size;
-		is_free = ((struct s_header *)((size_t)addr->ptr + i))->is_free;
-		ft_printf("UNMAP %p - %p : %zu octets free : %u\n", ((size_t)addr->ptr + OVER_MDATA), ((size_t)addr->ptr + OVER_BLOCK), segment_size, is_free);
-		i += BLOCK_SIZE;
-	}
 }
 
 void	free(void *ptr)

@@ -12,16 +12,14 @@
 
 #ifndef LIBFT_H
 # define LIBFT_H
-# define TRUE	1
-# define FALSE	0
+
 # include <string.h>
 # include <stdio.h>
 # include <stdlib.h>
 # include <unistd.h>
 # include <errno.h>
+# include <stdbool.h>
 # include <ft_styles.h>
-
-typedef int			t_bool;
 
 typedef struct		s_list
 {
@@ -30,7 +28,7 @@ typedef struct		s_list
 	struct s_list	*next;
 }					t_list;
 
-void				ft_strcolor_fd(char *s, char *color, int fd, t_bool endl);
+void				ft_strcolor_fd(char *s, char *color, int fd, bool endl);
 size_t				ft_size_tab(char **tab);
 void				ft_error_system(void);
 void				ft_print_tab(char **tab, int fd);
@@ -45,7 +43,7 @@ void				ft_lstadd(t_list **alst, void *data, size_t size);
 void				ft_lstadd_back(t_list **begin_lst, void *data, size_t size);
 void				ft_lstiter(t_list *lst, void (*f)(t_list *elem));
 t_list				*ft_lstmap(t_list *lst, t_list *(*f)(t_list *elem));
-void				ft_lst_sort(t_list **alst, int (*f_cmp)());
+void				ft_lst_sort(t_list **alst, int (*f_cmp)(void));
 int					ft_strcmp(const char *s1, const char *s2);
 size_t				ft_strlen(const char *s);
 size_t				ft_nbrlen(int nbr);
