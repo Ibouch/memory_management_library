@@ -14,6 +14,9 @@
 # define NEW_BLOCK (META_DATA + size)
 # define OVER_MDATA (i + META_DATA)
 # define OVER_BLOCK (i + BLOCK_SIZE)
+# define MDATA_BLOCK_FREE ((t_header *)((size_t)a->ptr + i))->is_free
+# define MDATA_BLOCK_SIZE ((t_header *)((size_t)a->ptr + i))->size
+# define P_SIZE g_data.pagesize
 
 typedef struct		s_header
 {

@@ -60,21 +60,33 @@ void	*get_available_block(t_area *area, size_t size)
 	((t_header *)((size_t)area->ptr + area->memory_allocated))->size = size;
 	((t_header *)((size_t)area->ptr + area->memory_allocated))->is_free = false;
 	area->memory_allocated += NEW_BLOCK;
-	return (return_pointer((void *)((size_t)area->ptr + (area->memory_allocated - size))));
+	return (return_pointer((void *)((size_t)area->ptr
+	+ (area->memory_allocated - size))));
+}
+
+static bool	max_mem_alloc(size_t size)
+{
+	return ((g_data.areas_size[g_data.id]
+	+ g_data.total_allocated >= g_data.rlm.rlim_cur
+	|| (size + g_data.total_allocated) >= g_data.rlm.rlim_cur)
+		|| (g_data.areas_size[g_data.id] < NEW_BLOCK
+			|| g_data.areas_size[g_data.id] < size));
 }
 
 void	*add_new_area(t_area **area, size_t size)
 {
-	g_data.pagesize = getpagesize();
 	g_data.areas_size[TINY] = (g_data.alloc_max[TINY] + META_DATA) * 100;
 	g_data.areas_size[SMALL] = (g_data.alloc_max[SMALL] + META_DATA) * 100;
 	g_data.areas_size[LARGE] = NEW_BLOCK;
-	g_data.areas_size[g_data.id] = (size_t)(((int)(g_data.areas_size[g_data.id] + sizeof(t_area)) + g_data.pagesize - 1) / g_data.pagesize * g_data.pagesize);
-	if ((g_data.areas_size[g_data.id] + g_data.total_allocated >= g_data.rlm.rlim_cur
-	|| (size + g_data.total_allocated) >= g_data.rlm.rlim_cur)
-	|| (g_data.areas_size[g_data.id] < NEW_BLOCK || g_data.areas_size[g_data.id] < size))
+	g_data.areas_size[g_data.id] = (size_t)(((int)(g_data.areas_size[g_data.id]
+	+ sizeof(t_area)) + P_SIZE - 1) / P_SIZE * P_SIZE);
+	if ((max_mem_alloc(size)) == true)
+	{
+		ft_putstr("MAXX ALLLOCCCC");//sdsd
 		return (return_pointer(NULL));
-	*area = (t_area *)mmap(0, g_data.areas_size[g_data.id], PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+	}
+	*area = (t_area *)mmap(0, g_data.areas_size[g_data.id],
+		PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 	if (*area == MAP_FAILED)
 		return (return_pointer(NULL));
 	(*area)->memory_available = g_data.areas_size[g_data.id] - sizeof(t_area);
@@ -100,18 +112,17 @@ static void	show_data(size_t memory_available, size_t memory_allocated)
 	ft_putstr("- Total : ");
 	print_size(memory_available);
 	ft_putendl(" octets");
-
 	ft_putstr("\033[1;93m- Allocated : ");
 	print_size(memory_allocated);
 	ft_putendl(" octets");
-
 	ft_putstr("\033[1;93m- Available : ");
 	print_size(memory_available - memory_allocated);
 	ft_putendl(" octets");
 	ft_putendl("\033[1;93m------------------------------------------\n");
 }
 
-static void	show_block_range(void *ptr, size_t i, size_t segment_size, bool is_free)
+static void	show_block_range(void *ptr, size_t i,
+	size_t segment_size, bool is_free)
 {
 	print_addr(((size_t)ptr + OVER_MDATA));
 	ft_putstr(" - ");
@@ -119,7 +130,8 @@ static void	show_block_range(void *ptr, size_t i, size_t segment_size, bool is_f
 	ft_putstr(" : ");
 	print_size(segment_size);
 	ft_putstr(" octets");
-	(is_free) ? ft_strcolor_fd(" [✓]", H_GREEN, 1, true) : ft_strcolor_fd(" [✘]", H_RED, 1, true);
+	(is_free) ? ft_strcolor_fd(" [✓]", H_GREEN, 1, true)
+	: ft_strcolor_fd(" [✘]", H_RED, 1, true);
 }
 
 static void	show_area_mem(t_area *addr, const char area[6], size_t *total)
@@ -167,18 +179,20 @@ static void	*find_available_free_block(t_area *a, size_t size)
 	i = 0;
 	while (i < a->memory_allocated)
 	{
-		segment_size = ((t_header *)((size_t)a->ptr + i))->size;
-		if (((t_header *)((size_t)a->ptr + i))->is_free == true && size <= segment_size)
+		segment_size = MDATA_BLOCK_SIZE;
+		if (MDATA_BLOCK_FREE == true && size <= segment_size)
 		{
 			if (NEW_BLOCK < segment_size)
 			{
-				((t_header *)((size_t)a->ptr + (OVER_MDATA + size)))->size = segment_size - NEW_BLOCK;
-				((t_header *)((size_t)a->ptr + (OVER_MDATA + size)))->is_free = true;
-				((t_header *)((size_t)a->ptr + i))->size = size;
-				((t_header *)((size_t)a->ptr + i))->is_free = false;
+				((t_header *)((size_t)a->ptr +
+					(OVER_MDATA + size)))->size = segment_size - NEW_BLOCK;
+				((t_header *)((size_t)a->ptr
+					+ (OVER_MDATA + size)))->is_free = true;
+				MDATA_BLOCK_SIZE = size;
+				MDATA_BLOCK_FREE = false;
 			}
 			else
-				((t_header *)((size_t)a->ptr + i))->is_free = false;
+				MDATA_BLOCK_FREE = false;
 			return ((void *)((size_t)a->ptr + OVER_MDATA));
 		}
 		i += BLOCK_SIZE;
@@ -186,8 +200,9 @@ static void	*find_available_free_block(t_area *a, size_t size)
 	return (NULL);
 }
 
-static void	_init_(size_t size)
+static void	init_(size_t size)
 {
+	P_SIZE = getpagesize();
 	getrlimit(RLIMIT_AS, &(g_data.rlm));
 	g_data.alloc_max[TINY] = 64;
 	g_data.alloc_max[SMALL] = 1024;
@@ -206,7 +221,7 @@ void	*malloc(size_t size)
 
 	if (!size)
 		return (NULL);
-	_init_(size);
+	init_(size);
 	pthread_mutex_lock(&(g_ptmu));
 	if (g_data.areas[g_data.id] == NULL)
 		return (add_new_area(&(g_data.areas[g_data.id]), size));
@@ -224,7 +239,7 @@ void	*malloc(size_t size)
 	return (return_pointer(NULL));
 }
 
-void	*merge_data_blocks(void	**start, void *to_merge)
+void	*merge_data_blocks(void **start, void *to_merge)
 {
 	size_t	segment_size;
 
@@ -233,11 +248,17 @@ void	*merge_data_blocks(void	**start, void *to_merge)
 	return (*(start));
 }
 
-uint8_t	free_toto2(t_iterator *it, t_area *a, uint8_t id)
+bool	check_unmap_area(t_iterator *it, t_area *a, uint8_t id)
 {
-	if ((it->free_blocks == true && (id != LARGE
-	&& (a->memory_allocated + META_DATA + g_data.alloc_max[id] > a->memory_available)))
-	|| (it->free_blocks == true && id == LARGE))
+	return ((it->free_blocks == true
+		&& (id != LARGE && (a->memory_allocated + META_DATA
+		+ g_data.alloc_max[id] > a->memory_available)))
+		|| (it->free_blocks == true && id == LARGE));
+}
+
+uint8_t	unmap_area(t_iterator *it, t_area *a, uint8_t id)
+{
+	if ((check_unmap_area()) == true)
 	{
 		if (it->tmp != NULL)
 			it->tmp->next = a->next;
@@ -250,7 +271,7 @@ uint8_t	free_toto2(t_iterator *it, t_area *a, uint8_t id)
 	return (0);
 }
 
-void	free_toto(t_iterator *it, t_area *a, void *ptr)
+void	parse_area(t_iterator *it, t_area *a, void *ptr)
 {
 	size_t		i;
 	size_t		segment_size;
@@ -258,11 +279,13 @@ void	free_toto(t_iterator *it, t_area *a, void *ptr)
 	i = 0;
 	while (i < a->memory_allocated)
 	{
-		it->previous = ((i > 0) ? (void *)((size_t)a->ptr + (i - BLOCK_SIZE)) : NULL);
-		segment_size = ((t_header *)((size_t)a->ptr + i))->size;
-		if ((size_t)ptr >= ((size_t)a->ptr + OVER_MDATA) && (size_t)ptr <= ((size_t)a->ptr + OVER_BLOCK))
+		it->previous = ((i > 0) ?
+		(void *)((size_t)a->ptr + (i - BLOCK_SIZE)) : NULL);
+		segment_size = MDATA_BLOCK_SIZE;
+		if ((size_t)ptr >= ((size_t)a->ptr + OVER_MDATA)
+			&& (size_t)ptr <= ((size_t)a->ptr + OVER_BLOCK))
 		{
-			((t_header *)((size_t)a->ptr + i))->is_free = true;
+			MDATA_BLOCK_FREE = true;
 			it->block = (void *)((size_t)a->ptr + i);
 			if (it->previous != NULL && ((t_header *)(it->previous))->is_free == true)
 				it->block = merge_data_blocks(&(it->previous), (void *)((size_t)a->ptr + i));
@@ -273,14 +296,14 @@ void	free_toto(t_iterator *it, t_area *a, void *ptr)
 				segment_size += ((t_header *)((size_t)a->ptr + OVER_BLOCK))->size + META_DATA;
 			}
 		}
-		it->free_blocks = (((t_header *)((size_t)a->ptr + i))->is_free == false) ? false : it->free_blocks;
+		it->free_blocks = (MDATA_BLOCK_FREE == false) ? false : it->free_blocks;
 		i += BLOCK_SIZE;
 	}
 }
 
 void	free(void *ptr)
 {
-	uint8_t	id;
+	uint8_t		id;
 	t_area		*a;
 	t_iterator	it;
 
@@ -293,8 +316,8 @@ void	free(void *ptr)
 		while (a != NULL)
 		{
 			it.free_blocks = true;
-			free_toto(&it, a, ptr);
-			if ((free_toto2(&it, a, id)))
+			parse_area(&it, a, ptr);
+			if ((unmap_area(&it, a, id)))
 				return ;
 			it.tmp = a;
 			a = a->next;
@@ -330,33 +353,31 @@ void	*realloc(void *ptr, size_t size)
 			i = 0;
 			while (i < a->memory_allocated)
 			{
-				segment_size = ((t_header *)((size_t)a->ptr + i))->size;
+				segment_size = MDATA_BLOCK_SIZE;
 				if ((size_t)ptr >= ((size_t)a->ptr + OVER_MDATA) && (size_t)ptr <= ((size_t)a->ptr + OVER_BLOCK))
 				{
-					if (OVER_BLOCK == a->memory_allocated && OVER_BLOCK + size <= a->memory_available) // last block
+					if (OVER_BLOCK == a->memory_allocated && OVER_BLOCK + size <= a->memory_available)
 					{
-						((t_header *)((size_t)a->ptr + i))->size += size;
-						((t_header *)((size_t)a->ptr + i))->is_free = false;
+						MDATA_BLOCK_SIZE += size;
+						MDATA_BLOCK_FREE = false;
 						a->memory_allocated += size;
 						return (return_pointer((void *)((size_t)a->ptr + OVER_MDATA)));
 					}
-					else if (OVER_BLOCK < a->memory_allocated && ((t_header *)((size_t)a->ptr + OVER_BLOCK))->is_free == true) // Si on rentre ici il y a un bloc allouer apres !
-					{						
-						//size = ((size < META_DATA) ? META_DATA : size); // Ne pas couper un header
+					else if (OVER_BLOCK < a->memory_allocated && ((t_header *)((size_t)a->ptr + OVER_BLOCK))->is_free == true)
+					{
 						next_size = ((t_header *)((size_t)a->ptr + OVER_BLOCK))->size;
 						if (size < next_size)
 						{
 							((t_header *)((size_t)a->ptr + OVER_BLOCK + size))->size = next_size - size;
 							((t_header *)((size_t)a->ptr + OVER_BLOCK + size))->is_free = true;
-
-							((t_header *)((size_t)a->ptr + i))->size += size;
-							((t_header *)((size_t)a->ptr + i))->is_free = false;
+							MDATA_BLOCK_SIZE += size;
+							MDATA_BLOCK_FREE = false;
 							return (return_pointer((void *)((size_t)a->ptr + OVER_MDATA)));
 						}
 						else if (size <= (META_DATA + next_size))
 						{
-							((t_header *)((size_t)a->ptr + i))->size += (META_DATA + next_size);
-							((t_header *)((size_t)a->ptr + i))->is_free = false;
+							MDATA_BLOCK_SIZE += (META_DATA + next_size);
+							MDATA_BLOCK_FREE = false;
 							return (return_pointer((void *)((size_t)a->ptr + OVER_MDATA)));
 						}
 					}
