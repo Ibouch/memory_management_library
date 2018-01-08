@@ -9,6 +9,12 @@
 # define SMALL 1
 # define LARGE 2
 
+# define META_DATA (sizeof(struct s_header))
+# define BLOCK_SIZE (META_DATA + segment_size)
+# define NEW_BLOCK (META_DATA + size)
+# define OVER_MDATA (i + META_DATA)
+# define OVER_BLOCK (i + BLOCK_SIZE)
+
 typedef struct		s_header
 {
 	size_t			size;
@@ -23,6 +29,14 @@ typedef struct		s_area
 	struct s_area	*next;
 }					t_area;
 
+typedef struct		s_iterator
+{
+	bool			free_blocks;
+	t_area			*tmp;
+	void			*previous;
+	void			*block;
+}					t_iterator;
+
 typedef struct		s_memory
 {
 	int				id;
@@ -31,7 +45,7 @@ typedef struct		s_memory
 	size_t			alloc_max[2];
 	struct s_area	*areas[N_AREA];
 	struct rlimit	rlm;
-	u_int64_t		total_allocated;
+	uint64_t		total_allocated;
 }					t_memory;
 
 static t_memory			g_data;

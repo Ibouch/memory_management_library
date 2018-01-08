@@ -1,11 +1,17 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   ft_putnbr_long_fd.c                                :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: ibouchla <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2016/02/19 18:52:07 by ibouchla          #+#    #+#             */
+/*   Updated: 2016/02/19 18:52:55 by ibouchla         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include <memory_management.h>
 #include <sys/mman.h>
-
-# define META_DATA (sizeof(struct s_header))
-# define BLOCK_SIZE (META_DATA + segment_size)
-# define NEW_BLOCK (META_DATA + size)
-# define OVER_MDATA (i + META_DATA)
-# define OVER_BLOCK (i + BLOCK_SIZE)
 
 void	print_digit_addr(size_t p)
 {
@@ -45,14 +51,14 @@ void	print_size(size_t nb)
 void	*return_pointer(void *ptr)
 {
 	pthread_mutex_unlock(&(g_ptmu));
-	//pthread_mutex_destroy(&(g_ptmu));
+	pthread_mutex_destroy(&(g_ptmu));
 	return (ptr);
 }
 
 void	*get_available_block(t_area *area, size_t size)
 {
-	((struct s_header *)((size_t)area->ptr + area->memory_allocated))->size = size;
-	((struct s_header *)((size_t)area->ptr + area->memory_allocated))->is_free = false;
+	((t_header *)((size_t)area->ptr + area->memory_allocated))->size = size;
+	((t_header *)((size_t)area->ptr + area->memory_allocated))->is_free = false;
 	area->memory_allocated += NEW_BLOCK;
 	return (return_pointer((void *)((size_t)area->ptr + (area->memory_allocated - size))));
 }
@@ -130,8 +136,8 @@ static void	show_area_mem(t_area *addr, const char area[6], size_t *total)
 		i = 0;
 		while (i < addr->memory_allocated)
 		{
-			segment_size = ((struct s_header *)((size_t)addr->ptr + i))->size;
-			is_free = ((struct s_header *)((size_t)addr->ptr + i))->is_free;
+			segment_size = ((t_header *)((size_t)addr->ptr + i))->size;
+			is_free = ((t_header *)((size_t)addr->ptr + i))->is_free;
 			show_block_range(addr->ptr, i, segment_size, is_free);
 			i += BLOCK_SIZE;
 			*total += segment_size;
@@ -161,18 +167,18 @@ static void	*find_available_free_block(t_area *a, size_t size)
 	i = 0;
 	while (i < a->memory_allocated)
 	{
-		segment_size = ((struct s_header *)((size_t)a->ptr + i))->size;
-		if (((struct s_header *)((size_t)a->ptr + i))->is_free == true && size <= segment_size)
+		segment_size = ((t_header *)((size_t)a->ptr + i))->size;
+		if (((t_header *)((size_t)a->ptr + i))->is_free == true && size <= segment_size)
 		{
 			if (NEW_BLOCK < segment_size)
 			{
-				((struct s_header *)((size_t)a->ptr + (OVER_MDATA + size)))->size = segment_size - NEW_BLOCK;
-				((struct s_header *)((size_t)a->ptr + (OVER_MDATA + size)))->is_free = true;
-				((struct s_header *)((size_t)a->ptr + i))->size = size;
-				((struct s_header *)((size_t)a->ptr + i))->is_free = false;
+				((t_header *)((size_t)a->ptr + (OVER_MDATA + size)))->size = segment_size - NEW_BLOCK;
+				((t_header *)((size_t)a->ptr + (OVER_MDATA + size)))->is_free = true;
+				((t_header *)((size_t)a->ptr + i))->size = size;
+				((t_header *)((size_t)a->ptr + i))->is_free = false;
 			}
 			else
-				((struct s_header *)((size_t)a->ptr + i))->is_free = false;
+				((t_header *)((size_t)a->ptr + i))->is_free = false;
 			return ((void *)((size_t)a->ptr + OVER_MDATA));
 		}
 		i += BLOCK_SIZE;
@@ -180,11 +186,8 @@ static void	*find_available_free_block(t_area *a, size_t size)
 	return (NULL);
 }
 
-void	*malloc(size_t size)
+static void	_init_(size_t size)
 {
-	t_area	*area;
-	void	*block;
-
 	getrlimit(RLIMIT_AS, &(g_data.rlm));
 	g_data.alloc_max[TINY] = 64;
 	g_data.alloc_max[SMALL] = 1024;
@@ -194,8 +197,16 @@ void	*malloc(size_t size)
 		g_data.id = SMALL;
 	else if (size)
 		g_data.id = LARGE;
-	else
+}
+
+void	*malloc(size_t size)
+{
+	t_area	*area;
+	void	*block;
+
+	if (!size)
 		return (NULL);
+	_init_(size);
 	pthread_mutex_lock(&(g_ptmu));
 	if (g_data.areas[g_data.id] == NULL)
 		return (add_new_area(&(g_data.areas[g_data.id]), size));
@@ -217,65 +228,75 @@ void	*merge_data_blocks(void	**start, void *to_merge)
 {
 	size_t	segment_size;
 
-	segment_size = ((struct s_header *)(to_merge))->size;
-	((struct s_header *)(*start))->size += BLOCK_SIZE;
+	segment_size = ((t_header *)(to_merge))->size;
+	((t_header *)(*start))->size += BLOCK_SIZE;
 	return (*(start));
+}
+
+uint8_t	free_toto2(t_iterator *it, t_area *a, uint8_t id)
+{
+	if ((it->free_blocks == true && (id != LARGE
+	&& (a->memory_allocated + META_DATA + g_data.alloc_max[id] > a->memory_available)))
+	|| (it->free_blocks == true && id == LARGE))
+	{
+		if (it->tmp != NULL)
+			it->tmp->next = a->next;
+		else
+			g_data.areas[id] = a->next;
+		munmap(a, (a->memory_available + sizeof(t_area)));
+		pthread_mutex_unlock(&(g_ptmu));
+		return (1);
+	}
+	return (0);
+}
+
+void	free_toto(t_iterator *it, t_area *a, void *ptr)
+{
+	size_t		i;
+	size_t		segment_size;
+
+	i = 0;
+	while (i < a->memory_allocated)
+	{
+		it->previous = ((i > 0) ? (void *)((size_t)a->ptr + (i - BLOCK_SIZE)) : NULL);
+		segment_size = ((t_header *)((size_t)a->ptr + i))->size;
+		if ((size_t)ptr >= ((size_t)a->ptr + OVER_MDATA) && (size_t)ptr <= ((size_t)a->ptr + OVER_BLOCK))
+		{
+			((t_header *)((size_t)a->ptr + i))->is_free = true;
+			it->block = (void *)((size_t)a->ptr + i);
+			if (it->previous != NULL && ((t_header *)(it->previous))->is_free == true)
+				it->block = merge_data_blocks(&(it->previous), (void *)((size_t)a->ptr + i));
+			if (OVER_BLOCK < a->memory_allocated
+			&& ((t_header *)((size_t)a->ptr + OVER_BLOCK))->is_free == true)
+			{
+				merge_data_blocks(&(it->block), (void *)((size_t)a->ptr + OVER_BLOCK));
+				segment_size += ((t_header *)((size_t)a->ptr + OVER_BLOCK))->size + META_DATA;
+			}
+		}
+		it->free_blocks = (((t_header *)((size_t)a->ptr + i))->is_free == false) ? false : it->free_blocks;
+		i += BLOCK_SIZE;
+	}
 }
 
 void	free(void *ptr)
 {
-	size_t		i;
-	size_t		segment_size;
-	u_int8_t	id;
-	bool		free_blocks;
-	void		*previous;
-	void		*block;
+	uint8_t	id;
 	t_area		*a;
-	t_area		*tmp;
+	t_iterator	it;
 
 	pthread_mutex_lock(&(g_ptmu));
-//	ft_printf("- Free : %p\n", ptr);
 	id = 0;
 	while (id < N_AREA)
 	{
-		tmp = NULL;
+		it.tmp = NULL;
 		a = g_data.areas[id];
 		while (a != NULL)
 		{
-			i = 0;
-			free_blocks = true;
-			while (i < a->memory_allocated)
-			{
-				previous = ((i > 0) ? (void *)((size_t)a->ptr + (i - BLOCK_SIZE)) : NULL);
-				segment_size = ((struct s_header *)((size_t)a->ptr + i))->size;
-				if ((size_t)ptr >= ((size_t)a->ptr + OVER_MDATA) && (size_t)ptr <= ((size_t)a->ptr + OVER_BLOCK))
-				{
-					((struct s_header *)((size_t)a->ptr + i))->is_free = true;
-					block = (void *)((size_t)a->ptr + i);
-					if (previous != NULL && ((struct s_header *)(previous))->is_free == true)
-						block = merge_data_blocks(&(previous), (void *)((size_t)a->ptr + i));
-					if (OVER_BLOCK < a->memory_allocated && ((struct s_header *)((size_t)a->ptr + OVER_BLOCK))->is_free == true)
-					{
-						merge_data_blocks(&(block), (void *)((size_t)a->ptr + OVER_BLOCK));
-						segment_size += ((struct s_header *)((size_t)a->ptr + OVER_BLOCK))->size + META_DATA;
-					}
-				}
-				free_blocks = (((struct s_header *)((size_t)a->ptr + i))->is_free == false) ? false : free_blocks;
-				i += BLOCK_SIZE;
-			}
-			if ((free_blocks == true && (id != LARGE
-			&& (a->memory_allocated + META_DATA + g_data.alloc_max[id] > a->memory_available)))
-			|| (free_blocks == true && id == LARGE))
-			{
-				if (tmp != NULL)
-					tmp->next = a->next;
-				else
-					g_data.areas[id] = a->next;
-				munmap(a, (a->memory_available + sizeof(t_area)));
-				pthread_mutex_unlock(&(g_ptmu));
+			it.free_blocks = true;
+			free_toto(&it, a, ptr);
+			if ((free_toto2(&it, a, id)))
 				return ;
-			}
-			tmp = a;
+			it.tmp = a;
 			a = a->next;
 		}
 		++id;
@@ -288,11 +309,10 @@ void	*realloc(void *ptr, size_t size)
 	size_t		i;
 	size_t		segment_size;
 	size_t		next_size;
-	u_int8_t	id;
+	uint8_t	id;
 	t_area		*a;
 	void		*new;
 
-//	ft_printf("- Realloc : %p | %zu\n", ptr, size);
 	if (ptr == NULL)
 		return (malloc(size));
 	if (size == 0)
@@ -310,33 +330,33 @@ void	*realloc(void *ptr, size_t size)
 			i = 0;
 			while (i < a->memory_allocated)
 			{
-				segment_size = ((struct s_header *)((size_t)a->ptr + i))->size;
+				segment_size = ((t_header *)((size_t)a->ptr + i))->size;
 				if ((size_t)ptr >= ((size_t)a->ptr + OVER_MDATA) && (size_t)ptr <= ((size_t)a->ptr + OVER_BLOCK))
 				{
 					if (OVER_BLOCK == a->memory_allocated && OVER_BLOCK + size <= a->memory_available) // last block
 					{
-						((struct s_header *)((size_t)a->ptr + i))->size += size;
-						((struct s_header *)((size_t)a->ptr + i))->is_free = false;
+						((t_header *)((size_t)a->ptr + i))->size += size;
+						((t_header *)((size_t)a->ptr + i))->is_free = false;
 						a->memory_allocated += size;
 						return (return_pointer((void *)((size_t)a->ptr + OVER_MDATA)));
 					}
-					else if (OVER_BLOCK < a->memory_allocated && ((struct s_header *)((size_t)a->ptr + OVER_BLOCK))->is_free == true) // Si on rentre ici il y a un bloc allouer apres !
+					else if (OVER_BLOCK < a->memory_allocated && ((t_header *)((size_t)a->ptr + OVER_BLOCK))->is_free == true) // Si on rentre ici il y a un bloc allouer apres !
 					{						
 						//size = ((size < META_DATA) ? META_DATA : size); // Ne pas couper un header
-						next_size = ((struct s_header *)((size_t)a->ptr + OVER_BLOCK))->size;
+						next_size = ((t_header *)((size_t)a->ptr + OVER_BLOCK))->size;
 						if (size < next_size)
 						{
-							((struct s_header *)((size_t)a->ptr + OVER_BLOCK + size))->size = next_size - size;
-							((struct s_header *)((size_t)a->ptr + OVER_BLOCK + size))->is_free = true;
+							((t_header *)((size_t)a->ptr + OVER_BLOCK + size))->size = next_size - size;
+							((t_header *)((size_t)a->ptr + OVER_BLOCK + size))->is_free = true;
 
-							((struct s_header *)((size_t)a->ptr + i))->size += size;
-							((struct s_header *)((size_t)a->ptr + i))->is_free = false;
+							((t_header *)((size_t)a->ptr + i))->size += size;
+							((t_header *)((size_t)a->ptr + i))->is_free = false;
 							return (return_pointer((void *)((size_t)a->ptr + OVER_MDATA)));
 						}
 						else if (size <= (META_DATA + next_size))
 						{
-							((struct s_header *)((size_t)a->ptr + i))->size += (META_DATA + next_size);
-							((struct s_header *)((size_t)a->ptr + i))->is_free = false;
+							((t_header *)((size_t)a->ptr + i))->size += (META_DATA + next_size);
+							((t_header *)((size_t)a->ptr + i))->is_free = false;
 							return (return_pointer((void *)((size_t)a->ptr + OVER_MDATA)));
 						}
 					}
