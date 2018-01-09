@@ -15,6 +15,7 @@ int	main(void)
 	for (int i = 0; i < 100; i += 2)
 	{
 		free(n[i]);
+		realloc(n[i], 40);
 		free(p[i]);
 		free(x[i]);
 	}

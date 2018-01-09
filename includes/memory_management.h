@@ -48,6 +48,8 @@ typedef struct		s_memory
 	size_t			alloc_max[2];
 	struct s_area	*areas[N_AREA];
 	struct rlimit	rlm;
+	bool			err_abort;
+	bool			initialized;
 	uint64_t		total_allocated;
 }					t_memory;
 

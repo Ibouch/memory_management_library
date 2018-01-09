@@ -82,6 +82,8 @@ void	*add_new_area(t_area **area, size_t size)
 	+ sizeof(t_area)) + P_SIZE - 1) / P_SIZE * P_SIZE);
 	if ((max_mem_alloc(size)) == true)
 	{
+		if (g_data.err_abort == true)
+			abort();
 		ft_putstr("MAXX ALLLOCCCC");//sdsd
 		return (return_pointer(NULL));
 	}
@@ -114,10 +116,18 @@ static void	show_data(size_t memory_available, size_t memory_allocated)
 	ft_putendl(" octets");
 	ft_putstr("\033[1;93m- Allocated : ");
 	print_size(memory_allocated);
-	ft_putendl(" octets");
+	ft_putstr(" octets [");
+	print_size((memory_allocated * 100) / memory_available);
+	ft_putendl("%]");
 	ft_putstr("\033[1;93m- Available : ");
 	print_size(memory_available - memory_allocated);
-	ft_putendl(" octets");
+	ft_putstr(" octets [");
+	print_size(((memory_available - memory_allocated) * 100) / memory_available);
+	ft_putendl("%]");
+	ft_putstr("\033[1;93m- Pages consummed : ");
+	print_size(memory_allocated / P_SIZE);
+	ft_putstr(" / ");
+	ft_putnbr_endl(memory_available / P_SIZE);
 	ft_putendl("\033[1;93m------------------------------------------\n");
 }
 
@@ -200,12 +210,21 @@ static void	*find_available_free_block(t_area *a, size_t size)
 	return (NULL);
 }
 
-static void	init_(size_t size)
+static void	init_(void)
 {
-	P_SIZE = getpagesize();
-	getrlimit(RLIMIT_AS, &(g_data.rlm));
-	g_data.alloc_max[TINY] = 64;
-	g_data.alloc_max[SMALL] = 1024;
+	if (!(g_data.initialized))
+	{
+		g_data.initialized = true;
+		g_data.err_abort = ((getenv("MallocErrorAbort")) ? true : false);
+		P_SIZE = getpagesize();
+		getrlimit(RLIMIT_AS, &(g_data.rlm));
+		g_data.alloc_max[TINY] = 64;
+		g_data.alloc_max[SMALL] = 1024;
+	}
+}
+
+static void	get_id(size_t size)
+{
 	if (size > 1 && size <= g_data.alloc_max[TINY])
 		g_data.id = TINY;
 	else if (size > g_data.alloc_max[TINY] && size <= g_data.alloc_max[SMALL])
@@ -221,7 +240,8 @@ void	*malloc(size_t size)
 
 	if (!size)
 		return (NULL);
-	init_(size);
+	init_();
+	get_id(size);
 	pthread_mutex_lock(&(g_ptmu));
 	if (g_data.areas[g_data.id] == NULL)
 		return (add_new_area(&(g_data.areas[g_data.id]), size));
@@ -258,7 +278,7 @@ bool	check_unmap_area(t_iterator *it, t_area *a, uint8_t id)
 
 uint8_t	unmap_area(t_iterator *it, t_area *a, uint8_t id)
 {
-	if ((check_unmap_area()) == true)
+	if ((check_unmap_area(it, a, id)) == true)
 	{
 		if (it->tmp != NULL)
 			it->tmp->next = a->next;
@@ -283,8 +303,10 @@ void	parse_area(t_iterator *it, t_area *a, void *ptr)
 		(void *)((size_t)a->ptr + (i - BLOCK_SIZE)) : NULL);
 		segment_size = MDATA_BLOCK_SIZE;
 		if ((size_t)ptr >= ((size_t)a->ptr + OVER_MDATA)
-			&& (size_t)ptr <= ((size_t)a->ptr + OVER_BLOCK))
+		&& (size_t)ptr <= ((size_t)a->ptr + OVER_BLOCK))
 		{
+			if (g_data.err_abort == true && ((t_header *)((size_t)a->ptr + i))->is_free == true)
+				abort();
 			MDATA_BLOCK_FREE = true;
 			it->block = (void *)((size_t)a->ptr + i);
 			if (it->previous != NULL && ((t_header *)(it->previous))->is_free == true)
@@ -327,12 +349,81 @@ void	free(void *ptr)
 	pthread_mutex_unlock(&(g_ptmu));
 }
 
-void	*realloc(void *ptr, size_t size)
+static void *realloc_last_block(t_area *a, size_t size, size_t i)
 {
-	size_t		i;
-	size_t		segment_size;
-	size_t		next_size;
-	uint8_t	id;
+	MDATA_BLOCK_SIZE += size;
+	MDATA_BLOCK_FREE = false;
+	a->memory_allocated += size;
+	return (return_pointer((void *)((size_t)a->ptr + OVER_MDATA)));
+}
+
+static void	*overwrite_next_free_block(t_area *a, size_t size, size_t segment_size, size_t i)
+{
+	size_t	next_size;
+
+	next_size = ((t_header *)((size_t)a->ptr + OVER_BLOCK))->size;
+	if (size < next_size)
+	{
+		((t_header *)((size_t)a->ptr + OVER_BLOCK + size))->size = next_size - size;
+		((t_header *)((size_t)a->ptr + OVER_BLOCK + size))->is_free = true;
+		MDATA_BLOCK_SIZE += size;
+		MDATA_BLOCK_FREE = false;
+		return (return_pointer((void *)((size_t)a->ptr + OVER_MDATA)));
+	}
+	else if (size <= (META_DATA + next_size))
+	{
+		MDATA_BLOCK_SIZE += (META_DATA + next_size);
+		MDATA_BLOCK_FREE = false;
+		return (return_pointer((void *)((size_t)a->ptr + OVER_MDATA)));
+	}
+	return (NULL);
+}
+
+static void	*copy_on_new_mem(t_area *a, size_t size, size_t segment_size, size_t i)
+{
+	void	*new;
+
+	if ((new = malloc(segment_size + size)) != NULL)
+	{
+		memcpy(new, (void *)((size_t)a->ptr + OVER_MDATA), segment_size); // dfsdf
+		free((void *)((size_t)a->ptr + OVER_MDATA));
+	}
+	return (new);
+}
+
+static void *parse_area_bis(void *ptr, size_t size, t_area *a, bool f)
+{
+	size_t	i;
+	size_t	segment_size;
+	void	*new;
+
+	i = 0;
+	while (i < a->memory_allocated)
+	{
+		segment_size = MDATA_BLOCK_SIZE;
+		if ((size_t)ptr >= ((size_t)a->ptr + OVER_MDATA) && (size_t)ptr <= ((size_t)a->ptr + OVER_BLOCK))
+		{
+			if (OVER_BLOCK == a->memory_allocated && OVER_BLOCK + size <= a->memory_available)
+				return (realloc_last_block(a, size, i));
+			else if (OVER_BLOCK < a->memory_allocated && ((t_header *)((size_t)a->ptr + OVER_BLOCK))->is_free == true)
+				if ((new = overwrite_next_free_block(a, size, segment_size, i)))
+					return (new);
+			pthread_mutex_unlock(&(g_ptmu));
+			if (f == true)
+			{
+				free(ptr);
+				return (NULL);
+			}
+			return (copy_on_new_mem(a, size, segment_size, i));
+		}
+		i += BLOCK_SIZE;
+	}
+	return (NULL);
+}
+
+static void	*main_realloc_func(void *ptr, size_t size, bool f)
+{
+	uint8_t		id;
 	t_area		*a;
 	void		*new;
 
@@ -350,50 +441,21 @@ void	*realloc(void *ptr, size_t size)
 		a = g_data.areas[id];
 		while (a != NULL)
 		{
-			i = 0;
-			while (i < a->memory_allocated)
-			{
-				segment_size = MDATA_BLOCK_SIZE;
-				if ((size_t)ptr >= ((size_t)a->ptr + OVER_MDATA) && (size_t)ptr <= ((size_t)a->ptr + OVER_BLOCK))
-				{
-					if (OVER_BLOCK == a->memory_allocated && OVER_BLOCK + size <= a->memory_available)
-					{
-						MDATA_BLOCK_SIZE += size;
-						MDATA_BLOCK_FREE = false;
-						a->memory_allocated += size;
-						return (return_pointer((void *)((size_t)a->ptr + OVER_MDATA)));
-					}
-					else if (OVER_BLOCK < a->memory_allocated && ((t_header *)((size_t)a->ptr + OVER_BLOCK))->is_free == true)
-					{
-						next_size = ((t_header *)((size_t)a->ptr + OVER_BLOCK))->size;
-						if (size < next_size)
-						{
-							((t_header *)((size_t)a->ptr + OVER_BLOCK + size))->size = next_size - size;
-							((t_header *)((size_t)a->ptr + OVER_BLOCK + size))->is_free = true;
-							MDATA_BLOCK_SIZE += size;
-							MDATA_BLOCK_FREE = false;
-							return (return_pointer((void *)((size_t)a->ptr + OVER_MDATA)));
-						}
-						else if (size <= (META_DATA + next_size))
-						{
-							MDATA_BLOCK_SIZE += (META_DATA + next_size);
-							MDATA_BLOCK_FREE = false;
-							return (return_pointer((void *)((size_t)a->ptr + OVER_MDATA)));
-						}
-					}
-					pthread_mutex_unlock(&(g_ptmu));
-					if ((new = malloc(segment_size + size)) != NULL)
-					{
-						memcpy(new, (void *)((size_t)a->ptr + OVER_MDATA), segment_size);
-						free((void *)((size_t)a->ptr + OVER_MDATA));
-					}
-					return (new);
-				}
-				i += BLOCK_SIZE;
-			}
+			if ((new = parse_area_bis(ptr, size, a, f)))
+				return (new);
 			a = a->next;
 		}
 		++id;
 	}
-	return (return_pointer(NULL));
+	return (NULL);
+}
+
+void	*realloc(void *ptr, size_t size)
+{
+	return (return_pointer(main_realloc_func(ptr, size, false)));
+}
+
+void	*reallocf(void *ptr, size_t size)
+{
+	return (return_pointer(main_realloc_func(ptr, size, true)));
 }
