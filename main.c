@@ -12,10 +12,10 @@ int	main(void)
 		p[i] = malloc(1024);
 		x[i] = malloc(2048);
 	}
-	for (int i = 0; i < 100; i += 2)
+	for (int i = 0; i < 100; i++)
 	{
 		free(n[i]);
-		realloc(n[i], 40);
+		reallocf(n[i], 40);
 		free(p[i]);
 		free(x[i]);
 	}

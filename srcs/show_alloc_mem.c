@@ -1,5 +1,19 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   show_alloc_mem.c                                   :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: ibouchla <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2018/01/10 17:07:03 by ibouchla          #+#    #+#             */
+/*   Updated: 2018/01/10 17:07:08 by ibouchla         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
 #include <memory_management.h>
+
+extern t_memory			g_data;
+extern pthread_mutex_t	g_ptmu;
 
 static void	print_area_name(const char area[6], void *ptr)
 {

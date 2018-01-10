@@ -1,8 +1,20 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   memory_functions.c                                 :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: ibouchla <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2018/01/10 17:06:29 by ibouchla          #+#    #+#             */
+/*   Updated: 2018/01/10 17:06:32 by ibouchla         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
 #include <memory_management.h>
 #include <sys/mman.h>
 
-extern t_memory		g_data;
+extern t_memory			g_data;
+extern pthread_mutex_t	g_ptmu;
 
 static bool	max_mem_alloc(size_t size)
 {
@@ -16,10 +28,7 @@ static bool	max_mem_alloc(size_t size)
 void		mutex_action(uint8_t action)
 {
 	if (action == INIT_MUTEX && (pthread_mutex_init(&(g_ptmu), NULL)) != 0)
-	{
-		ft_putstr("cant alloc");
 		abort();
-	}
 	else if (action == ULOCK_DESTROY)
 	{
 		pthread_mutex_unlock(&(g_ptmu));
@@ -50,16 +59,12 @@ void		*add_new_area(t_area **area, size_t size)
 	g_data.areas_size[TINY] = (g_data.alloc_max[TINY] + META_DATA) * 100;
 	g_data.areas_size[SMALL] = (g_data.alloc_max[SMALL] + META_DATA) * 100;
 	g_data.areas_size[LARGE] = NEW_BLOCK;
-	ft_putnbr_endl(g_data.alloc_max[TINY]);
-	ft_putnbr_endl(g_data.err_abort);
-	ft_putnbr_endl(P_SIZE);
 	g_data.areas_size[g_data.id] = (size_t)(((int)(g_data.areas_size[g_data.id]
 	+ sizeof(t_area)) + P_SIZE - 1) / P_SIZE * P_SIZE);
 	if ((max_mem_alloc(size)) == true)
 	{
 		if (g_data.err_abort == true)
 			abort();
-		ft_putstr("MAXX ALLLOCCCC");//sdsd
 		return (return_pointer(NULL));
 	}
 	*area = (t_area *)mmap(0, g_data.areas_size[g_data.id],

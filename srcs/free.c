@@ -1,8 +1,20 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   free.c                                             :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: ibouchla <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2018/01/10 17:06:05 by ibouchla          #+#    #+#             */
+/*   Updated: 2018/01/10 17:06:07 by ibouchla         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
 #include <memory_management.h>
 #include <sys/mman.h>
 
-extern t_memory		g_data;
+extern t_memory			g_data;
+extern pthread_mutex_t	g_ptmu;
 
 static void		*merge_data_blocks(void **start, void *to_merge)
 {
@@ -15,9 +27,10 @@ static void		*merge_data_blocks(void **start, void *to_merge)
 
 static uint8_t	unmap_area(t_iterator *it, t_area *a, uint8_t id)
 {
-	if ((it->free_blocks == true && (id != LARGE && (a->memory_allocated + META_DATA
-		+ g_data.alloc_max[id] > a->memory_available)))
-		|| (it->free_blocks == true && id == LARGE))
+	if ((it->free_blocks == true
+	&& (id != LARGE && (a->memory_allocated + META_DATA
+	+ g_data.alloc_max[id] > a->memory_available)))
+	|| (it->free_blocks == true && id == LARGE))
 	{
 		if (it->tmp != NULL)
 			it->tmp->next = a->next;
@@ -25,13 +38,13 @@ static uint8_t	unmap_area(t_iterator *it, t_area *a, uint8_t id)
 			g_data.areas[id] = a->next;
 		munmap(a, (a->memory_available + sizeof(t_area)));
 		mutex_action(ULOCK_DESTROY);
-		//pthread_mutex_unlock(&(g_ptmu));
 		return (1);
 	}
 	return (0);
 }
 
-static size_t	parse_free_block(t_area *a, t_iterator *it, size_t segment_size, size_t i)
+static size_t	parse_free_block(t_area *a, t_iterator *it,
+				size_t segment_size, size_t i)
 {
 	if (g_data.err_abort == true && MDATA_BLOCK_FREE == true)
 		abort();
@@ -76,7 +89,6 @@ void			free(void *ptr)
 	t_iterator	it;
 
 	mutex_action(INIT_MUTEX);
-	//pthread_mutex_lock(&(g_ptmu));
 	id = 0;
 	while (id < N_AREA)
 	{
@@ -94,5 +106,4 @@ void			free(void *ptr)
 		++id;
 	}
 	mutex_action(ULOCK_DESTROY);
-	//pthread_mutex_unlock(&(g_ptmu));
 }

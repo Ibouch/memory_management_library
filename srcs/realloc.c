@@ -1,5 +1,19 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   realloc.c                                          :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: ibouchla <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2018/01/10 17:06:54 by ibouchla          #+#    #+#             */
+/*   Updated: 2018/01/10 17:06:57 by ibouchla         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
 #include <memory_management.h>
+
+extern t_memory			g_data;
+extern pthread_mutex_t	g_ptmu;
 
 static void	*main_realloc_func(void *ptr, size_t size, bool f)
 {
@@ -15,7 +29,6 @@ static void	*main_realloc_func(void *ptr, size_t size, bool f)
 		return (NULL);
 	}
 	mutex_action(INIT_MUTEX);
-	//pthread_mutex_lock(&(g_ptmu));
 	id = 0;
 	while (id < N_AREA)
 	{
@@ -31,12 +44,12 @@ static void	*main_realloc_func(void *ptr, size_t size, bool f)
 	return (NULL);
 }
 
-void	*realloc(void *ptr, size_t size)
+void		*realloc(void *ptr, size_t size)
 {
 	return (return_pointer(main_realloc_func(ptr, size, false)));
 }
 
-void	*reallocf(void *ptr, size_t size)
+void		*reallocf(void *ptr, size_t size)
 {
 	return (return_pointer(main_realloc_func(ptr, size, true)));
 }

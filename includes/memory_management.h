@@ -1,3 +1,14 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   memory_management.h                                :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: ibouchla <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2018/01/10 17:05:16 by ibouchla          #+#    #+#             */
+/*   Updated: 2018/01/10 17:05:19 by ibouchla         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
 #ifndef MEMORY_MANAGEMENT_H
 # define MEMORY_MANAGEMENT_H
@@ -62,6 +73,7 @@ typedef struct		s_memory
 	uint64_t		total_allocated;
 }					t_memory;
 
+t_memory			g_data;
 pthread_mutex_t		g_ptmu;
 
 /*

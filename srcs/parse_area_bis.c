@@ -1,5 +1,18 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   parse_area_bis.c                                   :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: ibouchla <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2018/01/10 17:06:36 by ibouchla          #+#    #+#             */
+/*   Updated: 2018/01/10 17:06:41 by ibouchla         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
 #include <memory_management.h>
+
+extern pthread_mutex_t	g_ptmu;
 
 static void	*realloc_last_block(t_area *a, size_t size, size_t i)
 {
@@ -46,7 +59,6 @@ static void	*copy_on_new_mem(t_nem *n, size_t size,
 	void	*new;
 
 	mutex_action(ULOCK_DESTROY);
-	//pthread_mutex_unlock(&(g_ptmu));
 	if (n->f == true)
 	{
 		free(n->ptr);
@@ -54,7 +66,7 @@ static void	*copy_on_new_mem(t_nem *n, size_t size,
 	}
 	if ((new = malloc(segment_size + size)) != NULL)
 	{
-		memcpy(new, (void *)((size_t)n->a->ptr + OVER_MDATA), segment_size);//ft_memcpy
+		ft_memcpy(new, (void *)((size_t)n->a->ptr + OVER_MDATA), segment_size);
 		free((void *)((size_t)n->a->ptr + OVER_MDATA));
 	}
 	return (new);

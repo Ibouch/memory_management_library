@@ -1,12 +1,25 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   malloc.c                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: ibouchla <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2018/01/10 17:06:13 by ibouchla          #+#    #+#             */
+/*   Updated: 2018/01/10 17:06:16 by ibouchla         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
 #include <memory_management.h>
+
+extern t_memory			g_data;
+extern pthread_mutex_t	g_ptmu;
 
 static void	init_(void)
 {
 	mutex_action(INIT_MUTEX);
 	if (!(g_data.initialized))
 	{
-		ft_putstr("On init");
 		g_data.initialized = true;
 		g_data.err_abort = ((getenv("MallocErrorAbort")) ? true : false);
 		P_SIZE = getpagesize();
@@ -64,7 +77,6 @@ void		*malloc(size_t size)
 		return (NULL);
 	init_();
 	get_id(size);
-//	pthread_mutex_lock(&(g_ptmu));
 	if (g_data.areas[g_data.id] == NULL)
 		return (add_new_area(&(g_data.areas[g_data.id]), size));
 	area = g_data.areas[g_data.id];
