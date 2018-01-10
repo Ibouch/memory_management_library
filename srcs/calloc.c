@@ -1,4 +1,6 @@
 
+#include <memory_management.h>
+
 void	*calloc(size_t count, size_t size)
 {
 	void	*ptr;
@@ -6,14 +8,8 @@ void	*calloc(size_t count, size_t size)
 	if (((size_t)-1 / count) < size)
 		return (NULL);
 	ptr = malloc(count * size);
+	mutex_action(INIT_MUTEX);
 	if (ptr)
 		ft_bzero(ptr, count * size);
-	return (ptr);
+	return (return_pointer(ptr));
 }
-
-/*
-	** Page allocated 3/4
-	**	Nb alloc max restant
-	** Total nb de pages utilise 
-	** getenv pour le abort du free
-	**	reallocf

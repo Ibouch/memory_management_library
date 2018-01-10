@@ -17,6 +17,8 @@
 # define MDATA_BLOCK_FREE ((t_header *)((size_t)a->ptr + i))->is_free
 # define MDATA_BLOCK_SIZE ((t_header *)((size_t)a->ptr + i))->size
 # define P_SIZE g_data.pagesize
+# define ULOCK_DESTROY 0
+# define INIT_MUTEX 1
 
 typedef struct		s_header
 {
@@ -31,6 +33,13 @@ typedef struct		s_area
 	void			*ptr;
 	struct s_area	*next;
 }					t_area;
+
+typedef struct		s_nem
+{
+	t_area			*a;
+	void			*ptr;
+	bool			f;
+}					t_nem;
 
 typedef struct		s_iterator
 {
@@ -53,19 +62,34 @@ typedef struct		s_memory
 	uint64_t		total_allocated;
 }					t_memory;
 
-static t_memory			g_data;
-pthread_mutex_t			g_ptmu = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t		g_ptmu;
 
 /*
 **	Memory library functions
 */
 
+void				*reallocf(void *ptr, size_t size);
 void				*realloc(void *ptr, size_t size);
+void				*calloc(size_t count, size_t size);
 void				*malloc(size_t size);
 void				free(void *ptr);
 
+/*
+**	Print data functions
+*/
+
+void				print_size(size_t nb);
+void				print_addr(size_t p);
+void				show_alloc_mem(void);
+
+/*
+**	Other functions
+*/
+
+void				*parse_area_bis(void *ptr, size_t size, t_area *a, bool f);
 void				*get_available_block(t_area *area, size_t size);
 void				*add_new_area(t_area **area, size_t size);
-void				show_alloc_mem(void);
+void				*return_pointer(void *ptr);
+void				mutex_action(uint8_t action);
 
 #endif
