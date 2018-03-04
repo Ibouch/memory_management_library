@@ -80,6 +80,7 @@ void		show_alloc_mem(void)
 {
 	size_t	total;
 
+	mutex_action(INIT_MUTEX);
 	total = 0;
 	show_area_mem(g_data.areas[TINY], "TINY", &total);
 	show_area_mem(g_data.areas[SMALL], "SMALL", &total);
@@ -87,4 +88,5 @@ void		show_alloc_mem(void)
 	ft_putstr("\033[1;93m \n▶  Total : ");
 	print_size(total);
 	ft_putendl(" octets");
+	mutex_action(ULOCK_DESTROY);
 }

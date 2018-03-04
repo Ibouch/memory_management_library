@@ -47,6 +47,8 @@ void				ft_lst_sort(t_list **alst, int (*f_cmp)(void));
 int					ft_strcmp(const char *s1, const char *s2);
 size_t				ft_strlen(const char *s);
 size_t				ft_nbrlen(int nbr);
+size_t				ft_digitlen(intmax_t c, uint8_t base);
+size_t				ft_udigitlen(uintmax_t c, uint8_t base);
 char				*ft_strcpy(char *dst, const char *src);
 char				*ft_strdup(const char *s1);
 void				ft_strdel(char **as);

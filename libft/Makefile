@@ -52,6 +52,8 @@ SRC_NAME =	ft_bzero.c \
 		ft_strjoin.c \
 		ft_strlen.c \
 		ft_nbrlen.c \
+		ft_digitlen.c \
+		ft_udigitlen.c \
 		ft_strmap.c \
 		ft_strmapi.c \
 		ft_strncat.c \

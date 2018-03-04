@@ -19,7 +19,7 @@ NAME		=	libft_malloc_$(HOSTTYPE).so
 INC_PATH	=	-I includes/ -I libft/includes/
 SRC_PATH	=	srcs
 
-SRC_NAME	=	calloc.c free.c malloc.c memory_functions.c parse_area_bis.c print_area_data.c realloc.c show_alloc_mem.c
+SRC_NAME	=	calloc.c free.c malloc.c memory_functions.c parse_area_bis.c print_area_data.c realloc.c show_alloc_mem.c show_alloc_mem_ex.c
 
 SRC			=	$(addprefix $(SRC_PATH)/,$(SRC_NAME))
 OBJET		=	$(SRC:.c=.o)

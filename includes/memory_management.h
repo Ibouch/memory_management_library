@@ -93,6 +93,7 @@ void				free(void *ptr);
 void				print_size(size_t nb);
 void				print_addr(size_t p);
 void				show_alloc_mem(void);
+void				show_alloc_mem_ex(void);
 
 /*
 **	Other functions
